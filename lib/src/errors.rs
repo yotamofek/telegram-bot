@@ -1,20 +1,22 @@
 use std::error;
 use std::fmt;
 
+pub use telegram_bot_raw::Error as RawError;
+
 #[derive(Debug)]
 pub struct Error(ErrorKind);
 
 #[derive(Debug)]
-pub(crate) enum ErrorKind {
-    Raw(telegram_bot_raw::Error),
+pub enum ErrorKind {
+    Raw(RawError),
     Hyper(hyper_util::client::legacy::Error),
     Http(hyper::http::Error),
     Io(std::io::Error),
     InvalidMultipartFilename,
 }
 
-impl From<telegram_bot_raw::Error> for ErrorKind {
-    fn from(error: telegram_bot_raw::Error) -> Self {
+impl From<RawError> for ErrorKind {
+    fn from(error: RawError) -> Self {
         ErrorKind::Raw(error)
     }
 }
@@ -56,3 +58,9 @@ impl fmt::Display for Error {
 }
 
 impl error::Error for Error {}
+
+impl Error {
+    pub fn kind(&self) -> &ErrorKind {
+        &self.0
+    }
+}

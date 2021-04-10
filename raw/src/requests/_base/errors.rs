@@ -7,7 +7,7 @@ use crate::types::*;
 pub struct Error(ErrorKind);
 
 #[derive(Debug)]
-pub(crate) enum ErrorKind {
+pub enum ErrorKind {
     EmptyBody,
     TelegramError {
         description: String,
@@ -55,3 +55,9 @@ impl fmt::Display for Error {
 }
 
 impl error::Error for Error {}
+
+impl Error {
+    pub fn kind(&self) -> &ErrorKind {
+        &self.0
+    }
+}
