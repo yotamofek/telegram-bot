@@ -17,6 +17,8 @@ const TELEGRAM_LONG_POLL_TIMEOUT_SECONDS: u64 = 5;
 const TELEGRAM_LONG_POLL_LIMIT_MESSAGES: Integer = 100;
 const TELEGRAM_LONG_POLL_ERROR_DELAY_MILLISECONDS: u64 = 500;
 
+type Request = Pin<Box<dyn Future<Output = Result<Option<Vec<Update>>, Error>> + Send>>;
+
 /// This type represents stream of Telegram API updates and uses
 /// long polling method under the hood.
 #[must_use = "streams do nothing unless polled"]
@@ -24,8 +26,7 @@ pub struct UpdatesStream {
     api: Api,
     last_update: Integer,
     buffer: VecDeque<Update>,
-    current_request:
-        Option<Pin<Box<dyn Future<Output = Result<Option<Vec<Update>>, Error>> + Send>>>,
+    current_request: Option<Request>,
     timeout: Duration,
     allowed_updates: Vec<AllowedUpdate>,
     limit: Integer,
@@ -103,7 +104,7 @@ impl Stream for UpdatesStream {
 
                 let request = ref_mut.api.send_timeout(get_updates, timeout);
                 ref_mut.current_request = Some(Box::pin(request));
-                return Poll::Ready(Some(Err(err)));
+                Poll::Ready(Some(Err(err)))
             }
             Ok(false) => {
                 let timeout = ref_mut.timeout + Duration::from_secs(1);
