@@ -7,7 +7,7 @@ pub struct Error(ErrorKind);
 #[derive(Debug)]
 pub(crate) enum ErrorKind {
     Raw(telegram_bot_raw::Error),
-    Hyper(hyper::Error),
+    Hyper(hyper_util::client::legacy::Error),
     Http(hyper::http::Error),
     Io(std::io::Error),
     InvalidMultipartFilename,
@@ -19,8 +19,8 @@ impl From<telegram_bot_raw::Error> for ErrorKind {
     }
 }
 
-impl From<hyper::Error> for ErrorKind {
-    fn from(error: hyper::Error) -> Self {
+impl From<hyper_util::client::legacy::Error> for ErrorKind {
+    fn from(error: hyper_util::client::legacy::Error) -> Self {
         ErrorKind::Hyper(error)
     }
 }
