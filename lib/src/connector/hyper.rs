@@ -4,18 +4,13 @@ use std::pin::Pin;
 use std::str::FromStr;
 
 use bytes::Bytes;
-use futures::{Future, FutureExt, TryFutureExt};
-use hyper::{
-    body::to_bytes,
-    client::{connect::Connect, Client},
-    header::CONTENT_TYPE,
-    http::Error as HttpError,
-    Method, Request, Uri,
+use futures::{Future, FutureExt};
+use http_body_util::{BodyExt, Full};
+use hyper::{header::CONTENT_TYPE, http::Error as HttpError, Method, Request, Uri};
+use hyper_util::{
+    client::legacy::{connect::Connect, Client},
+    rt::TokioExecutor,
 };
-#[cfg(feature = "rustls")]
-use hyper_rustls::HttpsConnector;
-#[cfg(feature = "openssl")]
-use hyper_tls::HttpsConnector;
 use multipart::client::lazy::Multipart;
 use telegram_bot_raw::{
     Body as TelegramBody, HttpRequest, HttpResponse, Method as TelegramMethod, MultipartValue, Text,
@@ -25,7 +20,7 @@ use super::Connector;
 use crate::errors::{Error, ErrorKind};
 
 #[derive(Debug)]
-pub struct HyperConnector<C>(Client<C>);
+pub struct HyperConnector<C>(Client<C, Full<Bytes>>);
 
 enum MultipartTemporaryValue {
     Text(Text),
@@ -33,7 +28,7 @@ enum MultipartTemporaryValue {
 }
 
 impl<C> HyperConnector<C> {
-    pub fn new(client: Client<C>) -> Self {
+    pub fn new(client: Client<C, Full<Bytes>>) -> Self {
         HyperConnector(client)
     }
 }
@@ -58,7 +53,7 @@ impl<C: Connect + std::fmt::Debug + 'static + Clone + Send + Sync> Connector for
             let mut http_request = Request::builder().method(method).uri(uri);
 
             let request = match req.body {
-                TelegramBody::Empty => http_request.body(Into::<hyper::Body>::into(vec![])),
+                TelegramBody::Empty => http_request.body(Full::new(Bytes::new())),
                 TelegramBody::Json(body) => {
                     let content_type = "application/json"
                         .parse()
@@ -67,7 +62,7 @@ impl<C: Connect + std::fmt::Debug + 'static + Clone + Send + Sync> Connector for
                     http_request
                         .headers_mut()
                         .map(move |headers| headers.insert(CONTENT_TYPE, content_type));
-                    http_request.body(Into::<hyper::Body>::into(body))
+                    http_request.body(Full::new(body.into()))
                 }
                 TelegramBody::Multipart(parts) => {
                     let mut fields = Vec::new();
@@ -141,10 +136,12 @@ impl<C: Connect + std::fmt::Debug + 'static + Clone + Send + Sync> Connector for
             .map_err(ErrorKind::from)?;
 
             let response = client.request(request).await.map_err(ErrorKind::from)?;
-            let body = to_bytes(response.into_body())
+            let body = response
+                .into_body()
+                .collect()
                 .await
-                .unwrap_or_default()
-                .to_vec();
+                .map(|body| body.to_bytes().to_vec())
+                .unwrap_or_default();
 
             Ok::<HttpResponse, Error>(HttpResponse { body: Some(body) })
         };
@@ -155,12 +152,21 @@ impl<C: Connect + std::fmt::Debug + 'static + Clone + Send + Sync> Connector for
 
 pub fn default_connector() -> Result<Box<dyn Connector>, Error> {
     #[cfg(feature = "rustls")]
-    let connector = HttpsConnector::with_native_roots();
+    let connector = hyper_rustls::HttpsConnectorBuilder::new()
+        .with_native_roots()
+        .expect("no native root CA certificates found")
+        .https_only()
+        .enable_http1()
+        .build();
 
     #[cfg(feature = "openssl")]
-    let connector = HttpsConnector::new();
+    let connector = {
+        let mut connector = hyper_tls::HttpsConnector::new();
+        connector.https_only(true);
+        connector
+    };
 
     Ok(Box::new(HyperConnector::new(
-        Client::builder().build(connector),
+        Client::builder(TokioExecutor::new()).build(connector),
     )))
 }
