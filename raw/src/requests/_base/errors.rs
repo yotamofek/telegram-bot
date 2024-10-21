@@ -37,19 +37,19 @@ impl fmt::Display for Error {
                 description,
                 parameters,
             } => {
-                f.write_str(&description)?;
+                f.write_str(description)?;
                 if let Some(parameters) = parameters {
                     if let Some(chat_id) = parameters.migrate_to_chat_id {
-                        write!(f, ", migrate to chat id: {}", chat_id)?;
+                        write!(f, ", migrate to chat id: {chat_id}")?;
                     }
                     if let Some(seconds) = parameters.retry_after {
-                        write!(f, ", retry after: {}", seconds)?;
+                        write!(f, ", retry after: {seconds}")?;
                     }
                 }
                 Ok(())
             }
-            ErrorKind::DetachedError(s) => f.write_str(&s),
-            ErrorKind::Json(error) => write!(f, "{}", error),
+            ErrorKind::DetachedError(s) => f.write_str(s),
+            ErrorKind::Json(error) => write!(f, "{error}"),
         }
     }
 }
