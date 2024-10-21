@@ -6,7 +6,11 @@ use std::str::FromStr;
 use bytes::Bytes;
 use futures::{Future, FutureExt};
 use http_body_util::{BodyExt, Full};
-use hyper::{header::CONTENT_TYPE, http::Error as HttpError, Method, Request, Uri};
+use hyper::{
+    header::{HeaderValue, CONTENT_TYPE},
+    http::Error as HttpError,
+    Method, Request, Uri,
+};
 use hyper_util::{
     client::legacy::{connect::Connect, Client},
     rt::TokioExecutor,
@@ -55,13 +59,11 @@ impl<C: Connect + std::fmt::Debug + 'static + Clone + Send + Sync> Connector for
             let request = match req.body {
                 TelegramBody::Empty => http_request.body(Full::new(Bytes::new())),
                 TelegramBody::Json(body) => {
-                    let content_type = "application/json"
-                        .parse()
-                        .map_err(HttpError::from)
-                        .map_err(ErrorKind::from)?;
+                    const JSON_MIME_TYPE: HeaderValue =
+                        HeaderValue::from_static("application/json");
                     http_request
                         .headers_mut()
-                        .map(move |headers| headers.insert(CONTENT_TYPE, content_type));
+                        .map(move |headers| headers.insert(CONTENT_TYPE, JSON_MIME_TYPE));
                     http_request.body(Full::new(body.into()))
                 }
                 TelegramBody::Multipart(parts) => {
