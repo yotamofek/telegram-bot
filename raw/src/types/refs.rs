@@ -82,8 +82,8 @@ impl ToSourceChat for ChannelPost {
 impl ToSourceChat for MessageOrChannelPost {
     fn to_source_chat(&self) -> ChatId {
         match self {
-            &MessageOrChannelPost::Message(ref message) => message.to_source_chat(),
-            &MessageOrChannelPost::ChannelPost(ref channel_post) => channel_post.to_source_chat(),
+            MessageOrChannelPost::Message(message) => message.to_source_chat(),
+            MessageOrChannelPost::ChannelPost(channel_post) => channel_post.to_source_chat(),
         }
     }
 }
@@ -166,9 +166,9 @@ impl Serialize for ChatRef {
     where
         S: Serializer,
     {
-        match *self {
-            ChatRef::Id(id) => serializer.serialize_i64(id.into()),
-            ChatRef::ChannelUsername(ref username) => serializer.serialize_str(&username),
+        match self {
+            &ChatRef::Id(id) => serializer.serialize_i64(id.into()),
+            ChatRef::ChannelUsername(username) => serializer.serialize_str(username),
         }
     }
 }
@@ -306,8 +306,8 @@ impl ToMessageId for ChannelPost {
 impl ToMessageId for MessageOrChannelPost {
     fn to_message_id(&self) -> MessageId {
         match self {
-            &MessageOrChannelPost::Message(ref message) => message.to_message_id(),
-            &MessageOrChannelPost::ChannelPost(ref channel_post) => channel_post.to_message_id(),
+            MessageOrChannelPost::Message(message) => message.to_message_id(),
+            MessageOrChannelPost::ChannelPost(channel_post) => channel_post.to_message_id(),
         }
     }
 }
@@ -364,7 +364,7 @@ impl<'a> From<&'a str> for FileRef {
     }
 }
 
-impl<'a> From<String> for FileRef {
+impl From<String> for FileRef {
     fn from(s: String) -> Self {
         FileRef { inner: s.clone() }
     }

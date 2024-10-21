@@ -223,7 +223,7 @@ impl Message {
         let id = raw.message_id;
         let from = match raw.from.clone() {
             Some(from) => from,
-            None => return Err(format!("Missing `from` field for Message")),
+            None => return Err("Missing `from` field for Message".to_string()),
         };
         let date = raw.date;
         let chat = match raw.chat.clone() {
@@ -231,7 +231,7 @@ impl Message {
             Chat::Group(x) => MessageChat::Group(x),
             Chat::Supergroup(x) => MessageChat::Supergroup(x),
             Chat::Unknown(x) => MessageChat::Unknown(x),
-            Chat::Channel(_) => return Err(format!("Channel chat in Message")),
+            Chat::Channel(_) => return Err("Channel chat in Message".to_string()),
         };
 
         let reply_to_message = raw.reply_to_message.clone();
@@ -244,21 +244,21 @@ impl Message {
             raw.forward_from_message_id,
             &raw.forward_sender_name,
         ) {
-            (None, &None, &None, None, &None) => None,
-            (Some(date), &Some(ref from), &None, None, &None) => Some(Forward {
-                date: date,
+            (None, None, None, None, None) => None,
+            (Some(date), Some(from), None, None, None) => Some(Forward {
+                date,
                 from: ForwardFrom::User { user: from.clone() },
             }),
-            (Some(date), &None, &Some(Chat::Channel(ref channel)), Some(message_id), &None) => {
+            (Some(date), None, Some(Chat::Channel(channel)), Some(message_id), None) => {
                 Some(Forward {
-                    date: date,
+                    date,
                     from: ForwardFrom::Channel {
                         channel: channel.clone(),
-                        message_id: message_id,
+                        message_id,
                     },
                 })
             }
-            (Some(date), &None, &None, None, &Some(ref sender_name)) => Some(Forward {
+            (Some(date), None, None, None, Some(sender_name)) => Some(Forward {
                 date,
                 from: ForwardFrom::ChannelHiddenUser {
                     sender_name: sender_name.clone(),
@@ -267,31 +267,33 @@ impl Message {
             (
                 Some(date),
                 None,
-                Some(Chat::Supergroup(Supergroup {
-                    id: chat_id, title, ..
+                &Some(Chat::Supergroup(Supergroup {
+                    id: chat_id,
+                    ref title,
+                    ..
                 })),
                 None,
                 None,
             ) => Some(Forward {
                 date,
                 from: ForwardFrom::HiddenGroupAdmin {
-                    chat_id: chat_id.clone(),
+                    chat_id,
                     title: title.clone(),
                 },
             }),
-            _ => return Err(format!("invalid forward fields combination")),
+            _ => return Err("invalid forward fields combination".to_string()),
         };
 
         let make_message = |kind| {
             Ok(Message {
                 id: id.into(),
-                from: from,
-                date: date,
-                chat: chat,
-                forward: forward,
-                reply_to_message: reply_to_message,
-                edit_date: edit_date,
-                kind: kind,
+                from,
+                date,
+                chat,
+                forward,
+                reply_to_message,
+                edit_date,
+                kind,
             })
         };
 
@@ -335,10 +337,10 @@ impl Message {
         }
 
         if let Some(text) = raw.text {
-            let entities = raw.entities.unwrap_or_else(Vec::new);
+            let entities = raw.entities.unwrap_or_default();
             return make_message(MessageKind::Text {
                 data: text,
-                entities: entities,
+                entities,
             });
         }
 
@@ -366,7 +368,7 @@ impl Message {
         maybe_field!(migrate_from_chat_id, MigrateFromChatId);
         maybe_field!(pinned_message, PinnedMessage);
 
-        make_message(MessageKind::Unknown { raw: raw })
+        make_message(MessageKind::Unknown { raw })
     }
 }
 
@@ -377,7 +379,7 @@ impl<'de> Deserialize<'de> for Message {
     {
         let raw: RawMessage = Deserialize::deserialize(deserializer)?;
 
-        Self::from_raw_message(raw).map_err(|err| D::Error::custom(err))
+        Self::from_raw_message(raw).map_err(D::Error::custom)
     }
 }
 
@@ -387,7 +389,7 @@ impl ChannelPost {
         let date = raw.date;
         let chat = match raw.chat.clone() {
             Chat::Channel(channel) => channel,
-            _ => return Err(format!("Expected channel chat type for ChannelMessage")),
+            _ => return Err("Expected channel chat type for ChannelMessage".to_string()),
         };
         let reply_to_message = raw.reply_to_message.clone();
         let edit_date = raw.edit_date;
@@ -399,21 +401,21 @@ impl ChannelPost {
             raw.forward_from_message_id,
             &raw.forward_sender_name,
         ) {
-            (None, &None, &None, None, &None) => None,
-            (Some(date), &Some(ref from), &None, None, &None) => Some(Forward {
-                date: date,
+            (None, None, None, None, None) => None,
+            (Some(date), Some(from), None, None, None) => Some(Forward {
+                date,
                 from: ForwardFrom::User { user: from.clone() },
             }),
-            (Some(date), &None, &Some(Chat::Channel(ref channel)), Some(message_id), &None) => {
+            (Some(date), None, Some(Chat::Channel(channel)), Some(message_id), None) => {
                 Some(Forward {
-                    date: date,
+                    date,
                     from: ForwardFrom::Channel {
                         channel: channel.clone(),
-                        message_id: message_id,
+                        message_id,
                     },
                 })
             }
-            (Some(date), &None, &None, None, &Some(ref sender_name)) => Some(Forward {
+            (Some(date), None, None, None, Some(sender_name)) => Some(Forward {
                 date,
                 from: ForwardFrom::ChannelHiddenUser {
                     sender_name: sender_name.clone(),
@@ -422,30 +424,32 @@ impl ChannelPost {
             (
                 Some(date),
                 None,
-                Some(Chat::Supergroup(Supergroup {
-                    id: chat_id, title, ..
+                &Some(Chat::Supergroup(Supergroup {
+                    id: chat_id,
+                    ref title,
+                    ..
                 })),
                 None,
                 None,
             ) => Some(Forward {
                 date,
                 from: ForwardFrom::HiddenGroupAdmin {
-                    chat_id: chat_id.clone(),
+                    chat_id,
                     title: title.clone(),
                 },
             }),
-            _ => return Err(format!("invalid forward fields combination")),
+            _ => return Err("invalid forward fields combination".to_string()),
         };
 
         let make_message = |kind| {
             Ok(ChannelPost {
                 id: id.into(),
-                date: date,
-                chat: chat,
-                forward: forward,
-                reply_to_message: reply_to_message,
-                edit_date: edit_date,
-                kind: kind,
+                date,
+                chat,
+                forward,
+                reply_to_message,
+                edit_date,
+                kind,
             })
         };
 
@@ -489,10 +493,10 @@ impl ChannelPost {
         }
 
         if let Some(text) = raw.text {
-            let entities = raw.entities.unwrap_or_else(Vec::new);
+            let entities = raw.entities.unwrap_or_default();
             return make_message(MessageKind::Text {
                 data: text,
-                entities: entities,
+                entities,
             });
         }
 
@@ -520,7 +524,7 @@ impl ChannelPost {
         maybe_field!(migrate_from_chat_id, MigrateFromChatId);
         maybe_field!(pinned_message, PinnedMessage);
 
-        make_message(MessageKind::Unknown { raw: raw })
+        make_message(MessageKind::Unknown { raw })
     }
 }
 
@@ -532,7 +536,7 @@ impl<'de> Deserialize<'de> for ChannelPost {
     {
         let raw: RawMessage = Deserialize::deserialize(deserializer)?;
 
-        Self::from_raw_message(raw).map_err(|err| D::Error::custom(err))
+        Self::from_raw_message(raw).map_err(D::Error::custom)
     }
 }
 
@@ -543,10 +547,7 @@ impl<'de> Deserialize<'de> for MessageOrChannelPost {
         D: Deserializer<'de>,
     {
         let raw: RawMessage = Deserialize::deserialize(deserializer)?;
-        let is_channel = match raw.chat {
-            Chat::Channel(_) => true,
-            _ => false,
-        };
+        let is_channel = matches!(raw.chat, Chat::Channel(_));
 
         let res = if is_channel {
             ChannelPost::from_raw_message(raw).map(MessageOrChannelPost::ChannelPost)
@@ -554,7 +555,7 @@ impl<'de> Deserialize<'de> for MessageOrChannelPost {
             Message::from_raw_message(raw).map(MessageOrChannelPost::Message)
         };
 
-        res.map_err(|err| D::Error::custom(err))
+        res.map_err(D::Error::custom)
     }
 }
 
@@ -716,9 +717,9 @@ impl<'de> Deserialize<'de> for MessageEntity {
         };
 
         Ok(MessageEntity {
-            offset: offset,
-            length: length,
-            kind: kind,
+            offset,
+            length,
+            kind,
         })
     }
 }
