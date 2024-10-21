@@ -4,11 +4,11 @@ use std::pin::Pin;
 use std::str::FromStr;
 
 use bytes::Bytes;
-use futures::{Future, FutureExt, TryFutureExt};
+use futures::{Future, FutureExt};
 use hyper::{
     body::to_bytes,
     client::{connect::Connect, Client},
-    header::CONTENT_TYPE,
+    header::{HeaderValue, CONTENT_TYPE},
     http::Error as HttpError,
     Method, Request, Uri,
 };
@@ -60,13 +60,11 @@ impl<C: Connect + std::fmt::Debug + 'static + Clone + Send + Sync> Connector for
             let request = match req.body {
                 TelegramBody::Empty => http_request.body(Into::<hyper::Body>::into(vec![])),
                 TelegramBody::Json(body) => {
-                    let content_type = "application/json"
-                        .parse()
-                        .map_err(HttpError::from)
-                        .map_err(ErrorKind::from)?;
+                    const JSON_MIME_TYPE: HeaderValue =
+                        HeaderValue::from_static("application/json");
                     http_request
                         .headers_mut()
-                        .map(move |headers| headers.insert(CONTENT_TYPE, content_type));
+                        .map(move |headers| headers.insert(CONTENT_TYPE, JSON_MIME_TYPE));
                     http_request.body(Into::<hyper::Body>::into(body))
                 }
                 TelegramBody::Multipart(parts) => {
