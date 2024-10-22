@@ -16,7 +16,9 @@ license = "MIT"
 
 [features]
 openssl = ["hyper-tls"]
-rustls = ["hyper-rustls"]
+rustls = ["rustls-webpki-roots"]
+rustls-native-roots = ["dep:hyper-rustls", "hyper-rustls/ring", "hyper-rustls/native-tokio"]
+rustls-webpki-roots = ["dep:hyper-rustls", "hyper-rustls/ring", "hyper-rustls/webpki-roots"]
 default = ["openssl"]
 [dependencies]
 bytes = "1.0.1"
@@ -33,7 +35,7 @@ hyper-tls = { version = "0.6", optional = true  }
 hyper-util = { version = "0.1.9", features = ["client", "client-legacy", "http1"] }
 http-body-util = "0.1.2"
 futures = "0.3"
-hyper-rustls = { version = "0.27", optional = true }
+hyper-rustls = { version = "0.27", optional = true, default-features = false, features = ["http1", "tls12"] }
 [dev-dependencies]
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 tokio = { version = "1.2", features = ["macros", "time", "fs", "rt-multi-thread"] }
