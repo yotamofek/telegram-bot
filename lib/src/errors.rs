@@ -46,10 +46,10 @@ impl From<ErrorKind> for Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.0 {
-            ErrorKind::Raw(error) => write!(f, "{}", error),
-            ErrorKind::Hyper(error) => write!(f, "{}", error),
-            ErrorKind::Http(error) => write!(f, "{}", error),
-            ErrorKind::Io(error) => write!(f, "{}", error),
+            ErrorKind::Raw(error) => write!(f, "{error}"),
+            ErrorKind::Hyper(error) => write!(f, "{error}"),
+            ErrorKind::Http(error) => write!(f, "{error}"),
+            ErrorKind::Io(error) => write!(f, "{error}"),
             ErrorKind::InvalidMultipartFilename => write!(f, "invalid multipart filename"),
         }
     }

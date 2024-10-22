@@ -49,9 +49,9 @@ pub enum Body {
 impl fmt::Display for Body {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         match self {
-            Body::Empty => "<empty body>".fmt(f),
-            Body::Multipart(multipart) => write!(f, "{:?}", multipart),
-            Body::Json(s) => s.fmt(f),
+            Body::Empty => f.write_str("<empty body>"),
+            Body::Multipart(multipart) => write!(f, "{multipart:?}"),
+            Body::Json(s) => f.write_str(s),
             Body::__Nonexhaustive => unreachable!(),
         }
     }
